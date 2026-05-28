@@ -129,6 +129,7 @@
     <ClCompile Include="CommandParser.cpp" />
     <ClCompile Include="Jira_Project.cpp" />
     <ClCompile Include="Lecturer.cpp" />
+    <ClCompile Include="Project.cpp" />
     <ClCompile Include="Student.cpp" />
     <ClCompile Include="System.cpp" />
     <ClCompile Include="TeachingAssistant.cpp" />
@@ -140,13 +141,11 @@
     <ClInclude Include="CommandParser.h" />
     <ClInclude Include="Enums.h" />
     <ClInclude Include="Lecturer.h" />
+    <ClInclude Include="Project.h" />
     <ClInclude Include="Student.h" />
     <ClInclude Include="System.h" />
     <ClInclude Include="TeachingAssistant.h" />
     <ClInclude Include="User.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include=".gitignore" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -74,3 +74,10 @@ enum class CommandType {
     Register,
     Unknown
 };
+
+enum class ProjectStatus {
+    Active,
+    Finished,
+    InProgress,
+    Unknown
+};
