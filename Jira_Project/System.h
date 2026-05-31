@@ -10,7 +10,8 @@
 class System {
 private:
     std::vector<std::shared_ptr<User>> users;
-    std::vector<std::shared_ptr<Project>> projects; 
+    std::vector<std::shared_ptr<Project>> projects;
+    AuthenticationService authService;
     bool isRunning;
 
     void initializeAdmin();
@@ -33,4 +34,22 @@ public:
     void handleJoinProject(const std::vector<std::string>& args);
     void handleListProjects();
     void handleListAllProjects();
+
+    void handleCreateTask(const std::vector<std::string>& args);
+    void handleAssignTask(const std::vector<std::string>& args);
+    void handleChangeStatus(const std::vector<std::string>& args);
+    void handleAddComment(const std::vector<std::string>& args);
+    void handleAddTag(const std::vector<std::string>& args);
+    void handleReviewTask(const std::vector<std::string>& args);
+    void handleApproveTask(const std::vector<std::string>& args);
+    void handleGradeTask(const std::vector<std::string>& args);
+    void handleListTasks();
+    void handleMyTasks();
+    void handleUpcomingTasks();
+    void handleSearchTasks(const std::vector<std::string>& args);
+    void handleFilterTasks(const std::vector<std::string>& args);
+    void handleListAllTasks();
+    void handleStudentReport(const std::vector<std::string>& args);
+
+    void handleRemoveUser(const std::vector<std::string>& args);
 };

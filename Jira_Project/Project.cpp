@@ -1,4 +1,5 @@
 #include "Project.h"
+#include "Task.h"
 #include <algorithm>
 
 Project::Project(const std::string& projName, const std::string& projDesc)
@@ -46,4 +47,23 @@ bool Project::hasMember(const std::string& username) const {
 
 const std::vector<std::weak_ptr<User>>& Project::getMembers() const {
     return members;
+}
+
+void Project::addTask(std::shared_ptr<Task> task) {
+    if (task) {
+        tasks.push_back(task);
+    }
+}
+
+std::shared_ptr<Task> Project::getTaskById(const std::string& taskId) const {
+    for (const auto& task : tasks) {
+        if (task->getId() == taskId) {
+            return task;
+        }
+    }
+    return nullptr; 
+}
+
+const std::vector<std::shared_ptr<Task>>& Project::getTasks() const {
+    return tasks;
 }
