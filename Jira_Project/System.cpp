@@ -1,6 +1,9 @@
 #include "System.h"
 #include "Administrator.h"
 #include "Task.h"
+#include "Student.h"
+#include "TeachingAssistant.h"
+#include "Lecturer.h"
 #include <iostream>  
 #include <print>  
 #include <stdexcept>
@@ -60,6 +63,7 @@ void System::executeCommand(const Command& cmd) {
     case CommandType::Logout: handleLogout(); break;
     case CommandType::ViewProfile: handleViewProfile(); break;
     case CommandType::Help: handleHelp(); break;
+    case CommandType::Register: handleRegister(cmd.args); break;
 
     case CommandType::CreateProject: handleCreateProject(cmd.args); break;
     case CommandType::ArchiveProject: handleArchiveProject(cmd.args); break;
@@ -128,8 +132,13 @@ void System::handleCreateProject(const std::vector<std::string>& args) {
     for (const auto& proj : projects) {
         if (proj->getName() == args[0]) throw std::invalid_argument("Error: Project already exists.");
     }
-    projects.push_back(std::make_shared<Project>(args[0]));
-    std::println("Project '{}' created successfully.", args[0]);
+
+    std::string desc;
+    std::print("Description: ");
+    std::getline(std::cin, desc);
+
+    projects.push_back(std::make_shared<Project>(args[0], desc));
+    std::println("[System] Project '{}' created successfully.", args[0]);
 }
 
 void System::handleArchiveProject(const std::vector<std::string>& args) {
@@ -520,4 +529,30 @@ void System::handleRemoveUser(const std::vector<std::string>& args) {
         }
     }
     throw std::invalid_argument("Error: User not found.");
+}
+
+void System::handleRegister(const std::vector<std::string>& args) {
+    if (args.size() != 3) throw std::invalid_argument("Usage: register <username> <password> <role>");
+
+    for (const auto& u : users) {
+        if (u->getUsername() == args[0]) throw std::invalid_argument("Error: Username already exists.");
+    }
+
+    std::string hashedPass = AuthenticationService::hashPassword(args[1]);
+    std::string role = args[2];
+
+    if (role == "Student") {
+        users.push_back(std::make_shared<Student>(args[0], hashedPass));
+    }
+    else if (role == "TeachingAssistant") {
+        users.push_back(std::make_shared<TeachingAssistant>(args[0], hashedPass));
+    }
+    else if (role == "Lecturer") {
+        users.push_back(std::make_shared<Lecturer>(args[0], hashedPass));
+    }
+    else {
+        throw std::invalid_argument("Error: Invalid role. Use Student, TeachingAssistant, or Lecturer.");
+    }
+
+    std::println("[System] User '{}' registered.", args[0]);
 }

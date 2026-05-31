@@ -52,4 +52,5 @@ public:
     void handleStudentReport(const std::vector<std::string>& args);
 
     void handleRemoveUser(const std::vector<std::string>& args);
+    void handleRegister(const std::vector<std::string>& args);
 };

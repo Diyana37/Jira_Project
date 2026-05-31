@@ -32,7 +32,7 @@ public:
     bool hasMember(const std::string& username) const;
     const std::vector<std::weak_ptr<User>>& getMembers() const;
 
-    void addTask(std::shared_ptr<Task> task);
+    void baddTask(std::shared_ptr<Task> task);
     std::shared_ptr<Task> getTaskById(const std::string& taskId) const;
     const std::vector<std::shared_ptr<Task>>& getTasks() const;
 };
