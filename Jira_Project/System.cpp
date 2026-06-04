@@ -4,6 +4,7 @@
 #include "Student.h"
 #include "TeachingAssistant.h"
 #include "Lecturer.h"
+#include "Stage.h"
 #include <iostream>  
 #include <print>  
 #include <stdexcept>
@@ -91,6 +92,11 @@ void System::executeCommand(const Command& cmd) {
     case CommandType::ListAllTasks: handleListAllTasks(); break;
     case CommandType::StudentReport: handleStudentReport(cmd.args); break;
     case CommandType::RemoveUser: handleRemoveUser(cmd.args); break;
+
+    case CommandType::StartStage: handleStartStage(cmd.args); break;
+    case CommandType::FinishStage: handleFinishStage(cmd.args); break;
+    case CommandType::MoveTaskToStage: handleMoveTaskToStage(cmd.args); break;
+    case CommandType::StageReport: handleStageReport(); break;
 
     default:
         std::println("Command not yet implemented in System.");
@@ -511,10 +517,36 @@ void System::handleFilterTasks(const std::vector<std::string>& args) {
     std::string criteria = args[0];
 
     std::println("Filtered Tasks ({}):", criteria);
+    bool foundAny = false;
+
     for (const auto& p : projects) {
         for (const auto& t : p->getTasks()) {
-            std::println("- {}", t->getId());
+            std::string statusStr;
+            switch (t->getStatus()) {
+            case Status::ToDo: statusStr = "ToDo"; break;
+            case Status::InProgress: statusStr = "InProgress"; break;
+            case Status::InReview: statusStr = "InReview"; break;
+            case Status::Done: statusStr = "Done"; break;
+            }
+
+            std::string prioStr;
+            switch (t->getPriority()) {
+            case Priority::Low: prioStr = "Low"; break;
+            case Priority::Medium: prioStr = "Medium"; break;
+            case Priority::High: prioStr = "High"; break;
+            case Priority::Critical: prioStr = "Critical"; break;
+            }
+
+            if (statusStr == criteria || prioStr == criteria) {
+                std::println("- {} | {} | Status: {} | Priority: {}",
+                    t->getId(), t->getTitle(), statusStr, prioStr);
+                foundAny = true;
+            }
         }
+    }
+
+    if (!foundAny) {
+        std::println("No tasks found matching criteria: {}", criteria);
     }
 }
 
@@ -555,4 +587,97 @@ void System::handleRegister(const std::vector<std::string>& args) {
     }
 
     std::println("[System] User '{}' registered.", args[0]);
+}
+
+void System::handleStartStage(const std::vector<std::string>& args) {
+    if (args.size() != 1) throw std::invalid_argument("Usage: start-stage <stage_name>");
+
+    auto currentUser = authService.getCurrentUser()->getUsername();
+
+    for (const auto& p : projects) {
+        if (p->hasMember(currentUser)) {
+            auto stage = p->getStageByName(args[0]);
+            if (!stage) {
+                stage = std::make_shared<Stage>(args[0]);
+                p->addStage(stage);
+            }
+            stage->startStage();
+            std::println("[System] Stage '{}' started.", args[0]);
+            return;
+        }
+    }
+    throw std::invalid_argument("Error: You are not a member of any project to start a stage in.");
+}
+
+void System::handleFinishStage(const std::vector<std::string>& args) {
+    if (args.size() != 1) throw std::invalid_argument("Usage: finish-stage <stage_name>");
+
+    auto currentUser = authService.getCurrentUser()->getUsername();
+
+    for (const auto& p : projects) {
+        if (p->hasMember(currentUser)) {
+            auto stage = p->getStageByName(args[0]);
+            if (stage) {
+                stage->finishStage();
+                std::println("[System] Stage '{}' finished.", args[0]);
+                return;
+            }
+        }
+    }
+    throw std::invalid_argument("Error: Stage not found in your projects.");
+}
+
+void System::handleMoveTaskToStage(const std::vector<std::string>& args) {
+    if (args.size() != 2) throw std::invalid_argument("Usage: move-task-to-stage <task_id> <stage_name>");
+
+    std::shared_ptr<Task> targetTask = nullptr;
+    std::shared_ptr<Project> targetProject = nullptr;
+
+    for (const auto& p : projects) {
+        targetTask = p->getTaskById(args[0]);
+        if (targetTask) {
+            targetProject = p;
+            break;
+        }
+    }
+
+    if (!targetTask || !targetProject) throw std::invalid_argument("Error: Task not found.");
+
+    auto stage = targetProject->getStageByName(args[1]);
+    if (!stage) {
+        stage = std::make_shared<Stage>(args[1]);
+        targetProject->addStage(stage);
+    }
+
+    stage->addTask(targetTask);
+    std::println("[System] Task {} moved to {}.", args[0], args[1]);
+}
+
+void System::handleStageReport() {
+    auto currentUser = authService.getCurrentUser()->getUsername();
+    bool foundAny = false;
+
+    for (const auto& p : projects) {
+        if (p->hasMember(currentUser)) {
+            for (const auto& stage : p->getStages()) {
+                if (stage->getStatus() == StageStatus::Active) {
+                    foundAny = true;
+                    int completed = 0;
+                    for (const auto& t : stage->getTasks()) {
+                        if (t->getStatus() == Status::Done) {
+                            completed++;
+                        }
+                    }
+
+                    std::println("Stage: {}", stage->getName());
+                    std::println("Tasks: {}", stage->getTasks().size());
+                    std::println("Completed: {}", completed);
+                }
+            }
+        }
+    }
+
+    if (!foundAny) {
+        std::println("No active stages found to report.");
+    }
 }

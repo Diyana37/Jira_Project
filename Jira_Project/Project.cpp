@@ -1,5 +1,6 @@
 #include "Project.h"
 #include "Task.h"
+#include "Stage.h"
 #include <algorithm>
 
 Project::Project(const std::string& projName, const std::string& projDesc)
@@ -66,4 +67,19 @@ std::shared_ptr<Task> Project::getTaskById(const std::string& taskId) const {
 
 const std::vector<std::shared_ptr<Task>>& Project::getTasks() const {
     return tasks;
+}
+
+void Project::addStage(std::shared_ptr<Stage> stage) {
+    if (stage) stages.push_back(stage);
+}
+
+std::shared_ptr<Stage> Project::getStageByName(const std::string& stageName) const {
+    for (const auto& stage : stages) {
+        if (stage->getName() == stageName) return stage;
+    }
+    return nullptr;
+}
+
+const std::vector<std::shared_ptr<Stage>>& Project::getStages() const {
+    return stages;
 }

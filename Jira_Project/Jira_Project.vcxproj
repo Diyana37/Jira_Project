@@ -130,6 +130,7 @@
     <ClCompile Include="Jira_Project.cpp" />
     <ClCompile Include="Lecturer.cpp" />
     <ClCompile Include="Project.cpp" />
+    <ClCompile Include="Stage.cpp" />
     <ClCompile Include="Student.cpp" />
     <ClCompile Include="System.cpp" />
     <ClCompile Include="Task.cpp" />
@@ -144,6 +145,7 @@
     <ClInclude Include="Enums.h" />
     <ClInclude Include="Lecturer.h" />
     <ClInclude Include="Project.h" />
+    <ClInclude Include="Stage.h" />
     <ClInclude Include="Student.h" />
     <ClInclude Include="System.h" />
     <ClInclude Include="Task.h" />

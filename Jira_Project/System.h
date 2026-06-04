@@ -53,4 +53,9 @@ public:
 
     void handleRemoveUser(const std::vector<std::string>& args);
     void handleRegister(const std::vector<std::string>& args);
+
+    void handleStartStage(const std::vector<std::string>& args);
+    void handleFinishStage(const std::vector<std::string>& args);
+    void handleMoveTaskToStage(const std::vector<std::string>& args);
+    void handleStageReport();
 };

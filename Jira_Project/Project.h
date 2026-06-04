@@ -5,6 +5,7 @@
 #include "User.h"
 
 class Task;
+class Stage;
 
 class Project {
 private:
@@ -15,6 +16,7 @@ private:
 
     std::vector<std::weak_ptr<User>> members;
     std::vector<std::shared_ptr<Task>> tasks;
+    std::vector<std::shared_ptr<Stage>> stages;
 
 public:
     Project(const std::string& projName, const std::string& projDesc = "");
@@ -32,7 +34,11 @@ public:
     bool hasMember(const std::string& username) const;
     const std::vector<std::weak_ptr<User>>& getMembers() const;
 
-    void baddTask(std::shared_ptr<Task> task);
+    void addTask(std::shared_ptr<Task> task);
     std::shared_ptr<Task> getTaskById(const std::string& taskId) const;
     const std::vector<std::shared_ptr<Task>>& getTasks() const;
+
+    void addStage(std::shared_ptr<Stage> stage);
+    std::shared_ptr<Stage> getStageByName(const std::string& stageName) const;
+    const std::vector<std::shared_ptr<Stage>>& getStages() const;
 };
