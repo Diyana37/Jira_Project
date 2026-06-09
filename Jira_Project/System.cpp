@@ -9,6 +9,7 @@
 #include <print>  
 #include <stdexcept>
 #include <algorithm>
+#include <fstream>
 
 System::System() : isRunning(true) {
     initializeAdmin();
@@ -97,6 +98,8 @@ void System::executeCommand(const Command& cmd) {
     case CommandType::FinishStage: handleFinishStage(cmd.args); break;
     case CommandType::MoveTaskToStage: handleMoveTaskToStage(cmd.args); break;
     case CommandType::StageReport: handleStageReport(); break;
+
+    case CommandType::Save: handleSave(); break;
 
     default:
         std::println("Command not yet implemented in System.");
@@ -680,4 +683,30 @@ void System::handleStageReport() {
     if (!foundAny) {
         std::println("No active stages found to report.");
     }
+}
+
+void System::handleSave() {
+
+    std::ofstream userFile("users.txt");
+    if (!userFile) {
+        throw std::runtime_error("Error: Could not open users.txt for writing.");
+    }
+
+    for (const auto& u : users) {
+        std::string roleStr;
+        switch (u->getRole()) {
+        case Role::Student: roleStr = "Student"; break;
+        case Role::TeachingAssistant: roleStr = "TeachingAssistant"; break;
+        case Role::Lecturer: roleStr = "Lecturer"; break;
+        case Role::Administrator: roleStr = "Administrator"; break;
+        default: roleStr = "Unknown";
+        }
+
+        userFile << u->getUsername() << "|"
+            << u->getPasswordHash() << "|"
+            << roleStr << "\n";
+    }
+
+    userFile.close();
+    std::println("[System] User data saved successfully to users.txt.");
 }

@@ -58,4 +58,6 @@ public:
     void handleFinishStage(const std::vector<std::string>& args);
     void handleMoveTaskToStage(const std::vector<std::string>& args);
     void handleStageReport();
+
+    void handleSave();
 };
