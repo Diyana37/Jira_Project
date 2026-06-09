@@ -709,4 +709,52 @@ void System::handleSave() {
 
     userFile.close();
     std::println("[System] User data saved successfully to users.txt.");
+
+    std::ofstream projFile("projects.txt");
+    if (!projFile) throw std::runtime_error("Error: Could not open projects.txt for writing.");
+
+    for (const auto& p : projects) {
+        projFile << p->getName() << "|"
+            << p->getDescription() << "|"
+            << p->getIsArchived() << "|"
+            << p->getIsFinalized() << "|";
+
+        bool first = true;
+        for (const auto& m : p->getMembers()) {
+            if (auto member = m.lock()) {
+                if (!first) projFile << ",";
+                projFile << member->getUsername();
+                first = false;
+            }
+        }
+        projFile << "\n";
+    }
+    projFile.close();
+    std::println("[System] Project data saved successfully to projects.txt.");
+
+    std::ofstream taskFile("tasks.txt");
+    if (!taskFile) throw std::runtime_error("Error: Could not open tasks.txt for writing.");
+
+    for (const auto& p : projects) {
+        for (const auto& t : p->getTasks()) {
+            std::string assigneeName = "Unassigned";
+            if (auto a = t->getAssignee().lock()) {
+                assigneeName = a->getUsername();
+            }
+
+            taskFile << t->getId() << "|"
+                << p->getName() << "|" 
+                << t->getTitle() << "|"
+                << t->getDescription() << "|"
+                << t->getDeadline() << "|"
+                << t->getPoints() << "|"
+                << static_cast<int>(t->getType()) << "|"
+                << static_cast<int>(t->getPriority()) << "|"
+                << static_cast<int>(t->getStatus()) << "|"
+                << assigneeName << "|"
+                << t->getGrade() << "\n";
+        }
+    }
+    taskFile.close();
+    std::println("[System] Task data saved successfully to tasks.txt.");
 }
