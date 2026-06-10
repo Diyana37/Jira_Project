@@ -801,4 +801,40 @@ void System::handleLoad() {
 
     std::println("[System] User data loaded successfully from users.txt.");
 
+    std::ifstream projFile("projects.txt");
+    if (projFile) { 
+        std::string line;
+        while (std::getline(projFile, line)) {
+            if (line.empty()) continue;
+
+            std::stringstream ss(line);
+            std::string name, desc, archStr, finStr, membersStr;
+
+            std::getline(ss, name, '|');
+            std::getline(ss, desc, '|');
+            std::getline(ss, archStr, '|');
+            std::getline(ss, finStr, '|');
+            std::getline(ss, membersStr, '|'); 
+
+            auto proj = std::make_shared<Project>(name, desc);
+            proj->setArchived(archStr == "1");
+            proj->setFinalized(finStr == "1");
+
+            if (!membersStr.empty()) {
+                std::stringstream memStream(membersStr);
+                std::string memberName;
+                while (std::getline(memStream, memberName, ',')) {
+                    for (const auto& u : users) {
+                        if (u->getUsername() == memberName) {
+                            proj->addMember(u);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            projects.push_back(proj);
+        }
+        projFile.close();
+        std::println("[System] Project data loaded successfully from projects.txt.");
 }
