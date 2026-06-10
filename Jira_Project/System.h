@@ -60,4 +60,5 @@ public:
     void handleStageReport();
 
     void handleSave();
+    void handleLoad();
 };

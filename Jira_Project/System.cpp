@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 
 System::System() : isRunning(true) {
     initializeAdmin();
@@ -100,6 +101,7 @@ void System::executeCommand(const Command& cmd) {
     case CommandType::StageReport: handleStageReport(); break;
 
     case CommandType::Save: handleSave(); break;
+    case CommandType::Load: handleLoad(); break;
 
     default:
         std::println("Command not yet implemented in System.");
@@ -757,4 +759,46 @@ void System::handleSave() {
     }
     taskFile.close();
     std::println("[System] Task data saved successfully to tasks.txt.");
+}
+
+void System::handleLoad() {
+    authService.logout();
+    users.clear();
+    projects.clear();
+
+    std::ifstream userFile("users.txt");
+    if (!userFile) {
+        std::println("[System] No previous user data found. Starting fresh.");
+        initializeAdmin();
+        return;
+    }
+
+    std::string line;
+    while (std::getline(userFile, line)) {
+        if (line.empty()) continue;
+
+        std::stringstream ss(line);
+        std::string username, hash, role;
+
+        std::getline(ss, username, '|');
+        std::getline(ss, hash, '|');
+        std::getline(ss, role, '|');
+
+        if (role == "Student") {
+            users.push_back(std::make_shared<Student>(username, hash));
+        }
+        else if (role == "TeachingAssistant") {
+            users.push_back(std::make_shared<TeachingAssistant>(username, hash));
+        }
+        else if (role == "Lecturer") {
+            users.push_back(std::make_shared<Lecturer>(username, hash));
+        }
+        else if (role == "Administrator") {
+            users.push_back(std::make_shared<Administrator>(username, hash));
+        }
+    }
+    userFile.close();
+
+    std::println("[System] User data loaded successfully from users.txt.");
+
 }
