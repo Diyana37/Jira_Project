@@ -31,30 +31,42 @@ void Task::logHistory(const std::string& action) {
 std::string Task::getId() const { 
     return id; 
 }
+
+void Task::setId(const std::string& newId) {
+    id = newId;
+}
+
 TaskType Task::getType() const { 
     return type; 
 }
+
 Priority Task::getPriority() const {
     return priority; 
 }
+
 Status Task::getStatus() const { 
     return status; 
 }
 std::weak_ptr<User> Task::getAssignee() const { 
     return assignee;
 }
+
 int Task::getGrade() const {
     return grade; 
 }
+
 std::string Task::getTitle() const { 
     return title;
 }
+
 std::string Task::getDescription() const { 
     return description;
 }
+
 std::string Task::getDeadline() const {
     return deadline;
 }
+
 int Task::getPoints() const { 
     return points; 
 }

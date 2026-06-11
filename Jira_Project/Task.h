@@ -31,6 +31,8 @@ public:
     ~Task() = default;
 
     std::string getId() const;
+    void setId(const std::string& newId);
+
     TaskType getType() const;
     Priority getPriority() const;
     Status getStatus() const;

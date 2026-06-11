@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include "CommandParser.h"
 
 System::System() : isRunning(true) {
     initializeAdmin();
@@ -802,7 +803,7 @@ void System::handleLoad() {
     std::println("[System] User data loaded successfully from users.txt.");
 
     std::ifstream projFile("projects.txt");
-    if (projFile) { 
+    if (projFile) {
         std::string line;
         while (std::getline(projFile, line)) {
             if (line.empty()) continue;
@@ -814,7 +815,7 @@ void System::handleLoad() {
             std::getline(ss, desc, '|');
             std::getline(ss, archStr, '|');
             std::getline(ss, finStr, '|');
-            std::getline(ss, membersStr, '|'); 
+            std::getline(ss, membersStr, '|');
 
             auto proj = std::make_shared<Project>(name, desc);
             proj->setArchived(archStr == "1");
@@ -837,4 +838,70 @@ void System::handleLoad() {
         }
         projFile.close();
         std::println("[System] Project data loaded successfully from projects.txt.");
+
+        std::ifstream taskFile("tasks.txt");
+        if (taskFile) {
+            std::string line;
+            while (std::getline(taskFile, line)) {
+                if (line.empty()) continue;
+
+                std::stringstream ss(line);
+                std::string id, projName, title, desc, deadline, pointsStr, typeStr, prioStr, statusStr, assigneeName, gradeStr;
+
+                std::getline(ss, id, '|');
+                std::getline(ss, projName, '|');
+                std::getline(ss, title, '|');
+                std::getline(ss, desc, '|');
+                std::getline(ss, deadline, '|');
+                std::getline(ss, pointsStr, '|');
+                std::getline(ss, typeStr, '|');
+                std::getline(ss, prioStr, '|');
+                std::getline(ss, statusStr, '|');
+                std::getline(ss, assigneeName, '|');
+                std::getline(ss, gradeStr, '|');
+
+                int points = 0, typeInt = 0, prioInt = 0, statusInt = 0, gradeInt = -1;
+
+                std::stringstream(pointsStr) >> points;
+                std::stringstream(typeStr) >> typeInt;
+                std::stringstream(prioStr) >> prioInt;
+                std::stringstream(statusStr) >> statusInt;
+                std::stringstream(gradeStr) >> gradeInt;
+
+                std::shared_ptr<Project> targetProj = nullptr;
+                for (const auto& p : projects) {
+                    if (p->getName() == projName) {
+                        targetProj = p;
+                        break;
+                    }
+                }
+
+                if (targetProj) {
+                    auto newTask = std::make_shared<Task>(title, desc, deadline, points,
+                        static_cast<TaskType>(typeInt),
+                        static_cast<Priority>(prioInt));
+
+                    newTask->setId(id);
+
+                    newTask->setStatus(static_cast<Status>(statusInt), "SystemLoad");
+                    if (gradeInt != -1) {
+                        newTask->setGrade(gradeInt, "SystemLoad");
+                    }
+
+                    if (assigneeName != "Unassigned") {
+                        for (const auto& u : users) {
+                            if (u->getUsername() == assigneeName) {
+                                newTask->assignUser(u, "SystemLoad");
+                                break;
+                            }
+                        }
+                    }
+
+                    targetProj->addTask(newTask);
+                }
+            }
+            taskFile.close();
+            std::println("[System] Task data loaded successfully from tasks.txt.");
+        }
+    }
 }
