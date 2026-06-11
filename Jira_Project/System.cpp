@@ -123,6 +123,7 @@ void System::handleLogin(const std::vector<std::string>& args) {
 
     if (authService.login(args[0], args[1], users)) {
         std::println("Welcome, {}!", args[0]);
+        handleHelp();
     }
     else {
         throw std::invalid_argument("Invalid username or password.");
@@ -146,14 +147,19 @@ void System::handleHelp() {
     if (role == Role::Administrator) {
         std::println("- Admin: register, remove-user, create-project, archive-project, remove-project, add-user-to-project");
     }
-    if (role == Role::Student || role == Role::TeachingAssistant || role == Role::Lecturer) {
-        std::println("- Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks");
-    }
-    if (role == Role::TeachingAssistant || role == Role::Lecturer) {
-        std::println("- TA: review-task, approve-task, start-stage, finish-stage, move-task-to-stage, stage-report");
-    }
-    if (role == Role::Lecturer) {
+    else if (role == Role::Lecturer) {
         std::println("- Lecturer: finalize-project, list-all-projects, list-all-tasks, grade-task, student-report");
+        std::println("  (Inherits TA and Student commands):");
+        std::println("  - TA: approve-task, review-task, start-stage, finish-stage, stage-report, move-task-to-stage");
+        std::println("  - Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks, upcoming-tasks, search-tasks, filter-tasks");
+    }
+    else if (role == Role::TeachingAssistant) {
+        std::println("- TA: approve-task, review-task, start-stage, finish-stage, stage-report, move-task-to-stage");
+        std::println("  (Inherits Student commands):");
+        std::println("  - Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks, upcoming-tasks, search-tasks, filter-tasks");
+    }
+    else if (role == Role::Student) {
+        std::println("- Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks, upcoming-tasks, search-tasks, filter-tasks");
     }
 }
 
