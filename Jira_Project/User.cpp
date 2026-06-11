@@ -3,7 +3,7 @@
 int User::nextId = 1;
 
 User::User(const std::string& user, const std::string& passHash, Role r)
-    : username(user), passwordHash(passHash), role(r), id(nextId++) 
+    : username(user), passwordHash(passHash), role(r), id(nextId++)
 {
 }
 
@@ -28,7 +28,9 @@ bool User::isBasicCommand(CommandType cmd) {
         cmd == CommandType::Logout ||
         cmd == CommandType::ViewProfile ||
         cmd == CommandType::Help ||
-        cmd == CommandType::Close;
+        cmd == CommandType::Close ||
+        cmd == CommandType::Save ||  
+        cmd == CommandType::Load;    
 }
 
 bool User::isStudentCommand(CommandType cmd) {
@@ -59,6 +61,10 @@ bool User::isTACommand(CommandType cmd) {
 
 bool User::isLecturerCommand(CommandType cmd) {
     return isTACommand(cmd) ||
+        cmd == CommandType::CreateProject ||     
+        cmd == CommandType::ArchiveProject || 
+        cmd == CommandType::RemoveProject ||     
+        cmd == CommandType::AddUserToProject ||  
         cmd == CommandType::FinalizeProject ||
         cmd == CommandType::ListAllProjects ||
         cmd == CommandType::ListAllTasks ||

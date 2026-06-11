@@ -12,6 +12,7 @@ bool Administrator::canExecute(CommandType cmd) const {
         cmd == CommandType::ArchiveProject ||
         cmd == CommandType::RemoveProject ||
         cmd == CommandType::AddUserToProject ||
-        cmd == CommandType::Save ||
-        cmd == CommandType::Load;
+        cmd == CommandType::ListProjects ||     
+        cmd == CommandType::ListAllProjects ||   
+        cmd == CommandType::ListAllTasks;     
 }

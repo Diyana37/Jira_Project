@@ -55,6 +55,16 @@ void System::executeCommand(const Command& cmd) {
         return;
     }
 
+    if (cmd.type == CommandType::Load) {
+        handleLoad();
+        return;
+    }
+
+    if (cmd.type == CommandType::Save) {
+        handleSave();
+        return;
+    }
+
     if (!authService.isLoggedIn()) throw std::invalid_argument("You must be logged in to execute this command.");
 
     auto currentUser = authService.getCurrentUser();
@@ -101,9 +111,6 @@ void System::executeCommand(const Command& cmd) {
     case CommandType::MoveTaskToStage: handleMoveTaskToStage(cmd.args); break;
     case CommandType::StageReport: handleStageReport(); break;
 
-    case CommandType::Save: handleSave(); break;
-    case CommandType::Load: handleLoad(); break;
-
     default:
         std::println("Command not yet implemented in System.");
         break;
@@ -129,8 +136,25 @@ void System::handleLogout() {
 }
 
 void System::handleHelp() {
-    std::println("Use basic commands: login, logout, help, close.");
-    std::println("Project commands: create-project, join-project, list-all-projects, etc.");
+    std::println("=== Available Commands ===");
+    std::println("- Basic: login, logout, help, close, save, load, view-profile");
+
+    if (!authService.isLoggedIn()) return;
+
+    auto role = authService.getCurrentUser()->getRole();
+
+    if (role == Role::Administrator) {
+        std::println("- Admin: register, remove-user, create-project, archive-project, remove-project, add-user-to-project");
+    }
+    if (role == Role::Student || role == Role::TeachingAssistant || role == Role::Lecturer) {
+        std::println("- Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks");
+    }
+    if (role == Role::TeachingAssistant || role == Role::Lecturer) {
+        std::println("- TA: review-task, approve-task, start-stage, finish-stage, move-task-to-stage, stage-report");
+    }
+    if (role == Role::Lecturer) {
+        std::println("- Lecturer: finalize-project, list-all-projects, list-all-tasks, grade-task, student-report");
+    }
 }
 
 void System::handleViewProfile() {
@@ -150,6 +174,8 @@ void System::handleCreateProject(const std::vector<std::string>& args) {
     std::getline(std::cin, desc);
 
     projects.push_back(std::make_shared<Project>(args[0], desc));
+    projects.back()->addMember(authService.getCurrentUser());
+
     std::println("[System] Project '{}' created successfully.", args[0]);
 }
 
