@@ -57,21 +57,42 @@ Command CommandParser::parse(const std::string& input) {
     Command cmd;
     cmd.type = CommandType::Unknown;
 
-    if (input.empty()) return cmd;
+    if (input.empty()) {
+        return cmd;
+    }
 
-    size_t start = input.find_first_not_of(" \t\n\r");
-    if (start == std::string::npos) return cmd;
+    size_t i = 0;
+    size_t len = input.length();
 
-    size_t end = input.find_first_of(" \t\n\r", start);
-    std::string token = input.substr(start, end - start);
+    while (i < len && (input[i] == ' ' || input[i] == '\t' || input[i] == '\n' || input[i] == '\r')) {
+        i++;
+    }
 
+    if (i == len) return cmd;
+
+    size_t start = i;
+    while (i < len && input[i] != ' ' && input[i] != '\t' && input[i] != '\n' && input[i] != '\r') {
+        i++;
+    }
+
+    std::string token = input.substr(start, i - start);
     cmd.type = stringToCommandType(token);
 
-    while (end != std::string::npos) {
-        start = input.find_first_not_of(" \t\n\r", end);
-        if (start == std::string::npos) break;
-        end = input.find_first_of(" \t\n\r", start);
-        cmd.args.push_back(input.substr(start, end - start));
+    while (i < len) {
+        while (i < len && (input[i] == ' ' || input[i] == '\t' || input[i] == '\n' || input[i] == '\r')) {
+            i++;
+        }
+
+        if (i == len) {
+            break;
+        }
+
+        start = i;
+        while (i < len && input[i] != ' ' && input[i] != '\t' && input[i] != '\n' && input[i] != '\r') {
+            i++;
+        }
+
+        cmd.args.push_back(input.substr(start, i - start));
     }
 
     return cmd;

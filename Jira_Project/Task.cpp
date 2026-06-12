@@ -1,6 +1,7 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include "Task.h"
 #include <ctime>
+#include <stdexcept>
 
 int Task::nextId = 100;
 
@@ -33,6 +34,10 @@ std::string Task::getId() const {
 }
 
 void Task::setId(const std::string& newId) {
+    if (newId.empty()) {
+        throw std::invalid_argument("New тask ID cannot be empty.");
+    }
+
     id = newId;
 }
 
@@ -72,6 +77,10 @@ int Task::getPoints() const {
 }
 
 void Task::setStatus(Status newStatus, const std::string& modifierUsername) {
+    if (modifierUsername.empty()) {
+        throw std::invalid_argument("Modifier username cannot be empty when changing status!");
+    }
+
     if (status != newStatus) {
         status = newStatus;
         logHistory("Status updated to " + std::to_string(static_cast<int>(newStatus)) + " by " + modifierUsername);
@@ -79,23 +88,47 @@ void Task::setStatus(Status newStatus, const std::string& modifierUsername) {
 }
 
 void Task::assignUser(std::shared_ptr<User> user, const std::string& modifierUsername) {
-    if (user) {
-        assignee = user;
-        logHistory("Assigned to " + user->getUsername() + " by " + modifierUsername);
+    if (!user) {
+        throw std::invalid_argument("Cannot assign an empty user to the task!");
     }
+    if (modifierUsername.empty()) {
+        throw std::invalid_argument("Modifier username cannot be empty when assigning a user!");
+    }
+
+    assignee = user;
+    logHistory("Assigned to " + user->getUsername() + " by " + modifierUsername);
 }
 
 void Task::addComment(const std::string& author, const std::string& content) {
+    if (author.empty()) {
+        throw std::invalid_argument("Comment author cannot be empty.");
+    }
+    if (content.empty()) {
+        throw std::invalid_argument("Comment content cannot be empty.");
+    }
+
     comments.push_back({ author, content, getCurrentTimestamp() });
     logHistory("Comment added by " + author);
 }
 
 void Task::addTag(const std::string& tag) {
+    if (tag.empty()) {
+        throw std::invalid_argument("Tag cannot be empty.");
+    }
+
     tags.push_back(tag);
     logHistory("Tag '" + tag + "' added.");
 }
 
 void Task::setGrade(int newGrade, const std::string& modifierUsername) {
+    if (modifierUsername.empty()) {
+        throw std::invalid_argument("Modifier username cannot be empty when grading.");
+    }
+
+    if (newGrade < 0) {
+        throw std::invalid_argument("Grade cannot be negative.");
+    }
+
     grade = newGrade;
     logHistory("Graded with " + std::to_string(grade) + " by " + modifierUsername);
 }

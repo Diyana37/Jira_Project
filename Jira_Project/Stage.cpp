@@ -16,11 +16,26 @@ std::string Stage::getCurrentTimestamp() const {
     return timeStr;
 }
 
-std::string Stage::getName() const { return name; }
-std::string Stage::getStartDate() const { return startDate; }
-std::string Stage::getEndDate() const { return endDate; }
-StageStatus Stage::getStatus() const { return status; }
-const std::vector<std::shared_ptr<Task>>& Stage::getTasks() const { return tasks; }
+std::string Stage::getName() const { 
+    return name; 
+}
+
+std::string Stage::getStartDate() const { 
+    return startDate; 
+}
+
+std::string Stage::getEndDate() const {
+    return endDate;
+
+}
+
+StageStatus Stage::getStatus() const { 
+    return status;
+}
+
+const std::vector<std::shared_ptr<Task>>& Stage::getTasks() const { 
+    return tasks; 
+}
 
 void Stage::startStage() {
     status = StageStatus::Active;
