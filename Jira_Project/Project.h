@@ -30,6 +30,8 @@ public:
     void setArchived(bool archived);
     void setFinalized(bool finalized);
 
+    ProjectStatus getStatus() const;
+
     void addMember(std::shared_ptr<User> user);
     bool hasMember(const std::string& username) const;
     const std::vector<std::weak_ptr<User>>& getMembers() const;

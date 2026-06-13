@@ -31,6 +31,16 @@ void Project::setFinalized(bool finalized) {
     isFinalized = finalized; 
 }
 
+ProjectStatus Project::getStatus() const {
+    if (isArchived) {
+        return ProjectStatus::Unknown;
+    }
+    if (isFinalized) {
+        return ProjectStatus::Finished;
+    }
+    return ProjectStatus::Active;
+}
+
 void Project::addMember(std::shared_ptr<User> user) {
     if (!user) {
         throw std::invalid_argument("You cannot add empty user!");

@@ -82,3 +82,18 @@ enum class ProjectStatus {
     InProgress,
     Unknown
 };
+
+TaskType parseTaskType(const std::string& str);
+Priority parsePriority(const std::string& str);
+Status parseStatus(const std::string& str);
+Role parseRole(const std::string& str);
+StageStatus parseStageStatus(const std::string& str);
+ProjectStatus parseProjectStatus(const std::string& str);
+
+std::string roleToString(Role r);
+std::string statusToString(Status s);
+std::string priorityToString(Priority p);
+std::string stageStatusToString(StageStatus s);
+std::string projectStatusToString(ProjectStatus p);
+std::string taskTypeToString(TaskType t);
+
