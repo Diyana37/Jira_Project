@@ -127,6 +127,7 @@
     <ClCompile Include="Administrator.cpp" />
     <ClCompile Include="AuthenticationService.cpp" />
     <ClCompile Include="CommandParser.cpp" />
+    <ClCompile Include="Enums.cpp" />
     <ClCompile Include="Jira_Project.cpp" />
     <ClCompile Include="Lecturer.cpp" />
     <ClCompile Include="Project.cpp" />

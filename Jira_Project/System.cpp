@@ -12,9 +12,11 @@
 #include <fstream>
 #include <sstream>
 #include "CommandParser.h"
+#include "Enums.h"
+
 
 System::System() : isRunning(true) {
-    initializeAdmin();
+    handleLoad();
 }
 
 void System::initializeAdmin() {
@@ -24,6 +26,7 @@ void System::initializeAdmin() {
 void System::run() {
     std::string line;
     std::println("Welcome to FMI JIRA System");
+    std::println("Type 'help' in order to see available commands...");
 
     while (isRunning) {
         std::print("> ");
@@ -42,7 +45,9 @@ void System::run() {
 }
 
 void System::executeCommand(const Command& cmd) {
-    if (cmd.type == CommandType::Unknown) throw std::invalid_argument("Unknown command.");
+    if (cmd.type == CommandType::Unknown) {
+        throw std::invalid_argument("Unknown command.");
+    }
 
     if (cmd.type == CommandType::Close) {
         isRunning = false;
@@ -55,19 +60,31 @@ void System::executeCommand(const Command& cmd) {
         return;
     }
 
-    if (cmd.type == CommandType::Load) {
-        handleLoad();
+    if (cmd.type == CommandType::Help) {
+        handleHelp();
         return;
     }
 
-    if (cmd.type == CommandType::Save) {
-        handleSave();
-        return;
+    if (!authService.isLoggedIn()) {
+        throw std::invalid_argument("You must be logged in to execute this command.");
     }
-
-    if (!authService.isLoggedIn()) throw std::invalid_argument("You must be logged in to execute this command.");
 
     auto currentUser = authService.getCurrentUser();
+
+    if (cmd.type == CommandType::Load || cmd.type == CommandType::Save) {
+        if (currentUser->getRole() != Role::Administrator) {
+            throw std::invalid_argument("Permission denied. Only Administrators can use save/load commands.");
+        }
+
+        if (cmd.type == CommandType::Save) {
+            handleSave();
+        }
+        else {
+            handleLoad();
+        }
+        return;
+    }
+
 
     if (!currentUser->canExecute(cmd.type)) {
         throw std::invalid_argument("You do not have permission to execute this command.");
@@ -76,7 +93,6 @@ void System::executeCommand(const Command& cmd) {
     switch (cmd.type) {
     case CommandType::Logout: handleLogout(); break;
     case CommandType::ViewProfile: handleViewProfile(); break;
-    case CommandType::Help: handleHelp(); break;
     case CommandType::Register: handleRegister(cmd.args); break;
 
     case CommandType::CreateProject: handleCreateProject(cmd.args); break;
@@ -118,10 +134,16 @@ void System::executeCommand(const Command& cmd) {
 }
 
 void System::handleLogin(const std::vector<std::string>& args) {
-    if (args.size() != 2) throw std::invalid_argument("Usage: login <username> <password>");
-    if (authService.isLoggedIn()) throw std::invalid_argument("You are already logged in. Please logout first.");
+    if (args.size() != 2) {
+        throw std::invalid_argument("Usage: login <username> <password>");
+    }
+
+    if (authService.isLoggedIn()) {
+        throw std::invalid_argument("You are already logged in. Please logout first.");
+    }
 
     if (authService.login(args[0], args[1], users)) {
+        std::println("");
         std::println("Welcome, {}!", args[0]);
         handleHelp();
     }
@@ -131,48 +153,137 @@ void System::handleLogin(const std::vector<std::string>& args) {
 }
 
 void System::handleLogout() {
-    if (!authService.isLoggedIn()) throw std::invalid_argument("No user is currently logged in.");
+    if (!authService.isLoggedIn()) {
+        throw std::invalid_argument("No user is currently logged in.");
+    }
     std::println("Goodbye, {}!", authService.getCurrentUser()->getUsername());
     authService.logout();
 }
 
 void System::handleHelp() {
-    std::println("=== Available Commands ===");
-    std::println("- Basic: login, logout, help, close, save, load, view-profile");
+    std::println("=== General Commands ===");
+    std::println("  login <username> <password>");
+    std::println("  logout");
+    std::println("  help");
+    std::println("  view-profile");
+    std::println("  close");
 
-    if (!authService.isLoggedIn()) return;
+    if (!authService.isLoggedIn()) {
+        return;
+    }
+
+    std::println("");
 
     auto role = authService.getCurrentUser()->getRole();
 
     if (role == Role::Administrator) {
-        std::println("- Admin: register, remove-user, create-project, archive-project, remove-project, add-user-to-project");
+        std::println("=== Administrator Commands ===");
+        std::println("  register <username> <password> <role>");
+        std::println("  create-project <name>");
+        std::println("  archive-project <name>");
+        std::println("  remove-project <name>");
+        std::println("  add-user-to-project <user> <project>");
+        std::println("  remove-user <user>");
+        std::println("  save");
+        std::println("  load");
     }
     else if (role == Role::Lecturer) {
-        std::println("- Lecturer: finalize-project, list-all-projects, list-all-tasks, grade-task, student-report");
-        std::println("  (Inherits TA and Student commands):");
-        std::println("  - TA: approve-task, review-task, start-stage, finish-stage, stage-report, move-task-to-stage");
-        std::println("  - Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks, upcoming-tasks, search-tasks, filter-tasks");
+        std::println("=== Lecturer Commands ===");
+        std::println("  list-all-projects");
+        std::println("  list-all-tasks");
+        std::println("  grade-task <task_id> <grade>");
+        std::println("  student-report <student_name>");
+        std::println("  finalize-project <project_name>");
+
+        std::println("\n  (Inherits TA and Student commands):");
+
+        std::println("  --- TA Commands ---");
+        std::println("    approve-task <task_id>");
+        std::println("    review-task <task_id>");
+        std::println("    start-stage <stage_name>");
+        std::println("    finish-stage <stage_name>");
+        std::println("    stage-report");
+        std::println("    move-task-to-stage <task_id> <stage_name>");
+
+        std::println("  --- Student Commands ---");
+        std::println("    join-project <project_name>");
+        std::println("    list-projects");
+        std::println("    list-tasks");
+        std::println("    create-task <project> <type> <priority>");
+        std::println("    assign-task <task_id>");
+        std::println("    change-status <task_id> <status>");
+        std::println("    add-comment <task_id>");
+        std::println("    add-tag <task_id> <tag>");
+        std::println("    my-tasks");
+        std::println("    upcoming-tasks");
+        std::println("    search-tasks <keyword>");
+        std::println("    filter-tasks <criteria>");
     }
     else if (role == Role::TeachingAssistant) {
-        std::println("- TA: approve-task, review-task, start-stage, finish-stage, stage-report, move-task-to-stage");
-        std::println("  (Inherits Student commands):");
-        std::println("  - Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks, upcoming-tasks, search-tasks, filter-tasks");
+        std::println("=== TeachingAssistant Commands ===");
+        std::println("  approve-task <task_id>");
+        std::println("  review-task <task_id>");
+        std::println("  start-stage <stage_name>");
+        std::println("  finish-stage <stage_name>");
+        std::println("  stage-report");
+        std::println("  move-task-to-stage <task_id> <stage_name>");
+
+        std::println("\n  (Inherits Student commands):");
+
+        std::println("  --- Student Commands ---");
+        std::println("    join-project <project_name>");
+        std::println("    list-projects");
+        std::println("    list-tasks");
+        std::println("    create-task <project> <type> <priority>");
+        std::println("    assign-task <task_id>");
+        std::println("    change-status <task_id> <status>");
+        std::println("    add-comment <task_id>");
+        std::println("    add-tag <task_id> <tag>");
+        std::println("    my-tasks");
+        std::println("    upcoming-tasks");
+        std::println("    search-tasks <keyword>");
+        std::println("    filter-tasks <criteria>");
     }
     else if (role == Role::Student) {
-        std::println("- Student: list-projects, join-project, create-task, assign-task, change-status, add-comment, add-tag, my-tasks, list-tasks, upcoming-tasks, search-tasks, filter-tasks");
+        std::println("=== Student Commands ===");
+        std::println("  join-project <project_name>");
+        std::println("  list-projects");
+        std::println("  list-tasks");
+        std::println("  create-task <project> <type> <priority>");
+        std::println("  assign-task <task_id>");
+        std::println("  change-status <task_id> <status>");
+        std::println("  add-comment <task_id>");
+        std::println("  add-tag <task_id> <tag>");
+        std::println("  my-tasks");
+        std::println("  upcoming-tasks");
+        std::println("  search-tasks <keyword>");
+        std::println("  filter-tasks <criteria>");
     }
 }
 
 void System::handleViewProfile() {
     auto user = authService.getCurrentUser();
-    std::println("Username: {}", user->getUsername());
+
+    int projectCount = 0;
+    for (const auto& p : projects) {
+        if (p->hasMember(user->getUsername())) {
+            projectCount++;
+        }
+    }
+
+    std::println("Profile: {} | Role: {} | Projects: {}", user->getUsername(),
+        roleToString(user->getRole()), projectCount);   
 }
 
 void System::handleCreateProject(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: create-project <name>");
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: create-project <name>");
+    }
 
     for (const auto& proj : projects) {
-        if (proj->getName() == args[0]) throw std::invalid_argument("Error: Project already exists.");
+        if (proj->getName() == args[0]) {
+            throw std::invalid_argument("Error: Project already exists.");
+        }
     }
 
     std::string desc;
@@ -186,74 +297,59 @@ void System::handleCreateProject(const std::vector<std::string>& args) {
 }
 
 void System::handleArchiveProject(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: archive-project <name>");
-
-    for (const auto& proj : projects) {
-        if (proj->getName() == args[0]) {
-            proj->setArchived(true);
-            std::println("Project '{}' archived.", args[0]);
-            return;
-        }
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: archive-project <name>");
     }
-    throw std::invalid_argument("Error: Project not found.");
+
+    auto proj = findProjectByName(args[0]);
+    proj->setArchived(true);
+    std::println("Project '{}' archived.", args[0]);
 }
 
 void System::handleRemoveProject(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: remove-project <name>");
-
-    for (auto it = projects.begin(); it != projects.end(); ++it) {
-        if ((*it)->getName() == args[0]) {
-            projects.erase(it);
-            std::println("Project '{}' removed.", args[0]);
-            return;
-        }
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: remove-project <name>");
     }
-    throw std::invalid_argument("Error: Project not found.");
+
+    findProjectByName(args[0]);
+    projects.erase(std::remove_if(projects.begin(), projects.end(),
+            [&args](const std::shared_ptr<Project>& p) { 
+            return p->getName() == args[0]; 
+        }), projects.end());
+
+    std::println("Project '{}' removed.", args[0]);
 }
 
 void System::handleFinalizeProject(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: finalize-project <name>");
-
-    for (const auto& proj : projects) {
-        if (proj->getName() == args[0]) {
-            proj->setFinalized(true);
-            std::println("Project '{}' finalized.", args[0]);
-            return;
-        }
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: finalize-project <name>");
     }
-    throw std::invalid_argument("Error: Project not found.");
+
+    auto proj = findProjectByName(args[0]);
+    proj->setFinalized(true);
+    std::println("Project '{}' finalized.", args[0]);
 }
 
 void System::handleAddUserToProject(const std::vector<std::string>& args) {
-    if (args.size() != 2) throw std::invalid_argument("Usage: add-user-to-project <user> <project>");
-
-    std::shared_ptr<User> targetUser = nullptr;
-    for (const auto& u : users) {
-        if (u->getUsername() == args[0]) { targetUser = u; break; }
+    if (args.size() != 2) {
+        throw std::invalid_argument("Usage: add-user-to-project <user> <project>");
     }
-    if (!targetUser) throw std::invalid_argument("Error: User not found.");
 
-    for (const auto& p : projects) {
-        if (p->getName() == args[1]) {
-            p->addMember(targetUser);
-            std::println("User {} added to project {}.", args[0], args[1]);
-            return;
-        }
-    }
-    throw std::invalid_argument("Error: Project not found.");
+    auto targetUser = findUserByName(args[0]);
+    auto targetProject = findProjectByName(args[1]);
+
+    targetProject->addMember(targetUser);
+    std::println("User {} added to project {}.", args[0], args[1]);
 }
 
 void System::handleJoinProject(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: join-project <project_name>");
-
-    for (const auto& p : projects) {
-        if (p->getName() == args[0]) {
-            p->addMember(authService.getCurrentUser());
-            std::println("Successfully joined project {}.", args[0]);
-            return;
-        }
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: join-project <project_name>");
     }
-    throw std::invalid_argument("Error: Project not found.");
+
+    auto proj = findProjectByName(args[0]);
+    proj->addMember(authService.getCurrentUser());
+    std::println("Successfully joined project {}.", args[0]);
 }
 
 void System::handleListProjects() {
@@ -262,11 +358,13 @@ void System::handleListProjects() {
     bool found = false;
     for (const auto& p : projects) {
         if (p->hasMember(currentUser)) {
-            std::println("- {} (Archived: {}, Finalized: {})", p->getName(), p->getIsArchived(), p->getIsFinalized());
+            std::println("- {} | Status: {}", p->getName(), projectStatusToString(p->getStatus()));
             found = true;
         }
     }
-    if (!found) std::println("You are not a member of any projects.");
+    if (!found) {
+        std::println("You are not a member of any projects.");
+    }
 }
 
 void System::handleListAllProjects() {
@@ -276,42 +374,19 @@ void System::handleListAllProjects() {
         return;
     }
     for (const auto& p : projects) {
-        std::println("- {} (Archived: {}, Finalized: {})", p->getName(), p->getIsArchived(), p->getIsFinalized());
+        std::println("- {} | Status: {}", p->getName(), projectStatusToString(p->getStatus()));
     }
-}
-
-TaskType parseTaskType(const std::string& str) {
-    if (str == "Feature") return TaskType::Feature;
-    if (str == "Improvement") return TaskType::Improvement;
-    if (str == "Bug") return TaskType::Bug;
-    return TaskType::Task;
-}
-
-Priority parsePriority(const std::string& str) {
-    if (str == "Low") return Priority::Low;
-    if (str == "High") return Priority::High;
-    if (str == "Critical") return Priority::Critical;
-    return Priority::Medium;
-}
-
-Status parseStatus(const std::string& str) {
-    if (str == "InProgress") return Status::InProgress;
-    if (str == "InReview") return Status::InReview;
-    if (str == "Done") return Status::Done;
-    return Status::ToDo;
 }
 
 void System::handleCreateTask(const std::vector<std::string>& args) {
-    if (args.size() != 3) throw std::invalid_argument("Usage: create-task <project> <type> <priority>");
-
-    std::shared_ptr<Project> targetProj = nullptr;
-    for (const auto& p : projects) {
-        if (p->getName() == args[0]) { targetProj = p; break; }
+    if (args.size() != 3) {
+        throw std::invalid_argument("Usage: create-task <project> <type> <priority>");
     }
-    if (!targetProj) throw std::invalid_argument("Error: Project not found.");
+
+    auto targetProj = findProjectByName(args[0]);
 
     TaskType type = parseTaskType(args[1]);
-    Priority prio = parsePriority(args[2]);
+    Priority priority = parsePriority(args[2]);
 
     std::string title, desc, deadline;
     int points = 0;
@@ -334,51 +409,42 @@ void System::handleCreateTask(const std::vector<std::string>& args) {
 
     std::cin.ignore(10000, '\n');
 
-    auto newTask = std::make_shared<Task>(title, desc, deadline, points, type, prio);
+    auto newTask = std::make_shared<Task>(title, desc, deadline, points, type, priority);
     targetProj->addTask(newTask);
 
     std::println("[System] Task {} created successfully.", newTask->getId());
 }
 
 void System::handleAssignTask(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: assign-task <task_id>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: assign-task <task_id>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto task = findTaskById(args[0]);
 
     auto currentUser = authService.getCurrentUser();
-    targetTask->assignUser(currentUser, currentUser->getUsername());
+    task->assignUser(currentUser, currentUser->getUsername());
     std::println("Task {} assigned to {}.", args[0], currentUser->getUsername());
 }
 
 void System::handleChangeStatus(const std::vector<std::string>& args) {
-    if (args.size() != 2) throw std::invalid_argument("Usage: change-status <task_id> <status>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() != 2) {
+        throw std::invalid_argument("Usage: change-status <task_id> <status>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto task = findTaskById(args[0]);
 
     Status newStatus = parseStatus(args[1]);
-    targetTask->setStatus(newStatus, authService.getCurrentUser()->getUsername());
+    task->setStatus(newStatus, authService.getCurrentUser()->getUsername());
     std::println("Task {} status updated.", args[0]);
 }
 
 void System::handleAddComment(const std::vector<std::string>& args) {
-    if (args.size() < 2) throw std::invalid_argument("Usage: add-comment <task_id> <comment text>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() < 2) {
+        throw std::invalid_argument("Usage: add-comment <task_id> <comment text>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto targetTask = findTaskById(args[0]);
 
     std::string commentText = "";
     for (size_t i = 1; i < args.size(); ++i) {
@@ -390,56 +456,44 @@ void System::handleAddComment(const std::vector<std::string>& args) {
 }
 
 void System::handleAddTag(const std::vector<std::string>& args) {
-    if (args.size() != 2) throw std::invalid_argument("Usage: add-tag <task_id> <tag>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() != 2) {
+        throw std::invalid_argument("Usage: add-tag <task_id> <tag>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto targetTask = findTaskById(args[0]);
 
     targetTask->addTag(args[1]);
     std::println("Tag '{}' added to task {}.", args[1], args[0]);
 }
 
 void System::handleReviewTask(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: review-task <task_id>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: review-task <task_id>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto targetTask = findTaskById(args[0]);
 
     targetTask->setStatus(Status::InReview, authService.getCurrentUser()->getUsername());
     std::println("Task {} moved to InReview.", args[0]);
 }
 
 void System::handleApproveTask(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: approve-task <task_id>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: approve-task <task_id>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto targetTask = findTaskById(args[0]);
 
     targetTask->setStatus(Status::Done, authService.getCurrentUser()->getUsername());
     std::println("Task {} approved and moved to Done.", args[0]);
 }
 
 void System::handleGradeTask(const std::vector<std::string>& args) {
-    if (args.size() != 2) throw std::invalid_argument("Usage: grade-task <task_id> <grade>");
-
-    std::shared_ptr<Task> targetTask = nullptr;
-    for (const auto& p : projects) {
-        targetTask = p->getTaskById(args[0]);
-        if (targetTask) break;
+    if (args.size() != 2) {
+        throw std::invalid_argument("Usage: grade-task <task_id> <grade>");
     }
-    if (!targetTask) throw std::invalid_argument("Error: Task not found.");
+
+    auto targetTask = findTaskById(args[0]);
 
     try {
         int grade = std::stoi(args[1]);
@@ -452,10 +506,15 @@ void System::handleGradeTask(const std::vector<std::string>& args) {
 }
 
 void System::handleListTasks() {
-    std::println("Available Tasks:");
+    auto currentUser = authService.getCurrentUser()->getUsername();
+    std::println("Available Tasks (Your Projects):");
+
     for (const auto& p : projects) {
-        for (const auto& t : p->getTasks()) {
-            std::println("- {} | {} | {}", t->getId(), static_cast<int>(t->getStatus()), static_cast<int>(t->getPriority()));
+        if (p->hasMember(currentUser)) {
+            for (const auto& t : p->getTasks()) {
+                std::println("- {} | {} | {} | {}", t->getId(), t->getTitle(),
+                    statusToString(t->getStatus()), priorityToString(t->getPriority()));
+            }
         }
     }
 }
@@ -464,7 +523,8 @@ void System::handleListAllTasks() {
     std::println("All System Tasks:");
     for (const auto& p : projects) {
         for (const auto& t : p->getTasks()) {
-            std::println("- {} | {} | {}", t->getId(), static_cast<int>(t->getStatus()), static_cast<int>(t->getPriority()));
+            std::println("- {} | {} | {} | {}", t->getId(), t->getTitle(),
+                statusToString(t->getStatus()), priorityToString(t->getPriority()));
         }
     }
 }
@@ -483,7 +543,7 @@ void System::handleMyTasks() {
                         completed++;
                         score += (t->getGrade() > 0 ? t->getGrade() : t->getPoints());
                     }
-                    else if (t->getStatus() == Status::InProgress) {
+                    else if (t->getStatus() == Status::InProgress || t->getStatus() == Status::InReview) {
                         inProgress++;
                     }
                 }
@@ -491,12 +551,14 @@ void System::handleMyTasks() {
         }
     }
     std::println("Completed tasks: {}", completed);
-    std::println("In progress: {}", inProgress);
+    std::println("In progress/Review: {}", inProgress);
     std::println("Performance score: {}", score);
 }
 
 void System::handleStudentReport(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: student-report <student_name>");
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: student-report <student_name>");
+    }
 
     std::string targetUser = args[0];
     int completed = 0;
@@ -537,7 +599,9 @@ void System::handleUpcomingTasks() {
 }
 
 void System::handleSearchTasks(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: search-tasks <keyword>");
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: search-tasks <keyword>");
+    }
     std::string keyword = args[0];
 
     std::println("Search Results for '{}':", keyword);
@@ -551,7 +615,9 @@ void System::handleSearchTasks(const std::vector<std::string>& args) {
 }
 
 void System::handleFilterTasks(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: filter-tasks <criteria>");
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: filter-tasks <criteria>");
+    }
     std::string criteria = args[0];
 
     std::println("Filtered Tasks ({}):", criteria);
@@ -559,21 +625,9 @@ void System::handleFilterTasks(const std::vector<std::string>& args) {
 
     for (const auto& p : projects) {
         for (const auto& t : p->getTasks()) {
-            std::string statusStr;
-            switch (t->getStatus()) {
-            case Status::ToDo: statusStr = "ToDo"; break;
-            case Status::InProgress: statusStr = "InProgress"; break;
-            case Status::InReview: statusStr = "InReview"; break;
-            case Status::Done: statusStr = "Done"; break;
-            }
 
-            std::string prioStr;
-            switch (t->getPriority()) {
-            case Priority::Low: prioStr = "Low"; break;
-            case Priority::Medium: prioStr = "Medium"; break;
-            case Priority::High: prioStr = "High"; break;
-            case Priority::Critical: prioStr = "Critical"; break;
-            }
+            std::string statusStr = statusToString(t->getStatus());
+            std::string prioStr = priorityToString(t->getPriority());
 
             if (statusStr == criteria || prioStr == criteria) {
                 std::println("- {} | {} | Status: {} | Priority: {}",
@@ -589,35 +643,41 @@ void System::handleFilterTasks(const std::vector<std::string>& args) {
 }
 
 void System::handleRemoveUser(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: remove-user <username>");
-
-    for (auto it = users.begin(); it != users.end(); ++it) {
-        if ((*it)->getUsername() == args[0]) {
-            users.erase(it);
-            std::println("User '{}' removed from system.", args[0]);
-            return;
-        }
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: remove-user <username>");
     }
-    throw std::invalid_argument("Error: User not found.");
+
+    findUserByName(args[0]);
+
+    users.erase(std::remove_if(users.begin(), users.end(),
+            [&args](const std::shared_ptr<User>& u) { 
+            return u->getUsername() == args[0]; 
+        }), users.end());
+
+    std::println("User '{}' removed from system.", args[0]);
 }
 
 void System::handleRegister(const std::vector<std::string>& args) {
-    if (args.size() != 3) throw std::invalid_argument("Usage: register <username> <password> <role>");
+    if (args.size() != 3) {
+        throw std::invalid_argument("Usage: register <username> <password> <role>");
+    }
 
     for (const auto& u : users) {
-        if (u->getUsername() == args[0]) throw std::invalid_argument("Error: Username already exists.");
+        if (u->getUsername() == args[0]) {
+            throw std::invalid_argument("Error: Username already exists.");
+        }
     }
 
+    Role userRole = parseRole(args[2]);
     std::string hashedPass = AuthenticationService::hashPassword(args[1]);
-    std::string role = args[2];
 
-    if (role == "Student") {
+    if (userRole == Role::Student) {
         users.push_back(std::make_shared<Student>(args[0], hashedPass));
     }
-    else if (role == "TeachingAssistant") {
+    else if (userRole == Role::TeachingAssistant) {
         users.push_back(std::make_shared<TeachingAssistant>(args[0], hashedPass));
     }
-    else if (role == "Lecturer") {
+    else if (userRole == Role::Lecturer) {
         users.push_back(std::make_shared<Lecturer>(args[0], hashedPass));
     }
     else {
@@ -628,17 +688,27 @@ void System::handleRegister(const std::vector<std::string>& args) {
 }
 
 void System::handleStartStage(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: start-stage <stage_name>");
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: start-stage <stage_name>");
+    }
 
     auto currentUser = authService.getCurrentUser()->getUsername();
 
     for (const auto& p : projects) {
         if (p->hasMember(currentUser)) {
-            auto stage = p->getStageByName(args[0]);
+            std::shared_ptr<Stage> stage = nullptr;
+            for (const auto& s : p->getStages()) {
+                if (s->getName() == args[0]) {
+                    stage = s;
+                    break;
+                }
+            }
+
             if (!stage) {
                 stage = std::make_shared<Stage>(args[0]);
                 p->addStage(stage);
             }
+
             stage->startStage();
             std::println("[System] Stage '{}' started.", args[0]);
             return;
@@ -646,9 +716,10 @@ void System::handleStartStage(const std::vector<std::string>& args) {
     }
     throw std::invalid_argument("Error: You are not a member of any project to start a stage in.");
 }
-
 void System::handleFinishStage(const std::vector<std::string>& args) {
-    if (args.size() != 1) throw std::invalid_argument("Usage: finish-stage <stage_name>");
+    if (args.size() != 1) {
+        throw std::invalid_argument("Usage: finish-stage <stage_name>");
+    }
 
     auto currentUser = authService.getCurrentUser()->getUsername();
 
@@ -666,7 +737,9 @@ void System::handleFinishStage(const std::vector<std::string>& args) {
 }
 
 void System::handleMoveTaskToStage(const std::vector<std::string>& args) {
-    if (args.size() != 2) throw std::invalid_argument("Usage: move-task-to-stage <task_id> <stage_name>");
+    if (args.size() != 2) {
+        throw std::invalid_argument("Usage: move-task-to-stage <task_id> <stage_name>");
+    }
 
     std::shared_ptr<Task> targetTask = nullptr;
     std::shared_ptr<Project> targetProject = nullptr;
@@ -681,7 +754,14 @@ void System::handleMoveTaskToStage(const std::vector<std::string>& args) {
 
     if (!targetTask || !targetProject) throw std::invalid_argument("Error: Task not found.");
 
-    auto stage = targetProject->getStageByName(args[1]);
+    std::shared_ptr<Stage> stage = nullptr;
+    for (const auto& s : targetProject->getStages()) {
+        if (s->getName() == args[1]) {
+            stage = s;
+            break;
+        }
+    }
+
     if (!stage) {
         stage = std::make_shared<Stage>(args[1]);
         targetProject->addStage(stage);
@@ -728,14 +808,7 @@ void System::handleSave() {
     }
 
     for (const auto& u : users) {
-        std::string roleStr;
-        switch (u->getRole()) {
-        case Role::Student: roleStr = "Student"; break;
-        case Role::TeachingAssistant: roleStr = "TeachingAssistant"; break;
-        case Role::Lecturer: roleStr = "Lecturer"; break;
-        case Role::Administrator: roleStr = "Administrator"; break;
-        default: roleStr = "Unknown";
-        }
+        std::string roleStr = roleToString(u->getRole());
 
         userFile << u->getUsername() << "|"
             << u->getPasswordHash() << "|"
@@ -746,7 +819,9 @@ void System::handleSave() {
     std::println("[System] User data saved successfully to users.txt.");
 
     std::ofstream projFile("projects.txt");
-    if (!projFile) throw std::runtime_error("Error: Could not open projects.txt for writing.");
+    if (!projFile) {
+        throw std::runtime_error("Error: Could not open projects.txt for writing.");
+    }
 
     for (const auto& p : projects) {
         projFile << p->getName() << "|"
@@ -768,7 +843,9 @@ void System::handleSave() {
     std::println("[System] Project data saved successfully to projects.txt.");
 
     std::ofstream taskFile("tasks.txt");
-    if (!taskFile) throw std::runtime_error("Error: Could not open tasks.txt for writing.");
+    if (!taskFile) {
+        throw std::runtime_error("Error: Could not open tasks.txt for writing.");
+    }
 
     for (const auto& p : projects) {
         for (const auto& t : p->getTasks()) {
@@ -783,9 +860,9 @@ void System::handleSave() {
                 << t->getDescription() << "|"
                 << t->getDeadline() << "|"
                 << t->getPoints() << "|"
-                << static_cast<int>(t->getType()) << "|"
-                << static_cast<int>(t->getPriority()) << "|"
-                << static_cast<int>(t->getStatus()) << "|"
+                << taskTypeToString(t->getType()) << "|"
+                << priorityToString(t->getPriority()) << "|"
+                << statusToString(t->getStatus()) << "|"
                 << assigneeName << "|"
                 << t->getGrade() << "\n";
         }
@@ -808,7 +885,9 @@ void System::handleLoad() {
 
     std::string line;
     while (std::getline(userFile, line)) {
-        if (line.empty()) continue;
+        if (line.empty()) {
+            continue;
+        }
 
         std::stringstream ss(line);
         std::string username, hash, role;
@@ -817,16 +896,18 @@ void System::handleLoad() {
         std::getline(ss, hash, '|');
         std::getline(ss, role, '|');
 
-        if (role == "Student") {
+        Role userRole = parseRole(role);
+
+        if (userRole == Role::Student) {
             users.push_back(std::make_shared<Student>(username, hash));
         }
-        else if (role == "TeachingAssistant") {
+        else if (userRole == Role::TeachingAssistant) {
             users.push_back(std::make_shared<TeachingAssistant>(username, hash));
         }
-        else if (role == "Lecturer") {
+        else if (userRole == Role::Lecturer) {
             users.push_back(std::make_shared<Lecturer>(username, hash));
         }
-        else if (role == "Administrator") {
+        else if (userRole == Role::Administrator) {
             users.push_back(std::make_shared<Administrator>(username, hash));
         }
     }
@@ -838,7 +919,9 @@ void System::handleLoad() {
     if (projFile) {
         std::string line;
         while (std::getline(projFile, line)) {
-            if (line.empty()) continue;
+            if (line.empty()) {
+                continue;
+            }
 
             std::stringstream ss(line);
             std::string name, desc, archStr, finStr, membersStr;
@@ -875,7 +958,9 @@ void System::handleLoad() {
         if (taskFile) {
             std::string line;
             while (std::getline(taskFile, line)) {
-                if (line.empty()) continue;
+                if (line.empty()) {
+                    continue;
+                }
 
                 std::stringstream ss(line);
                 std::string id, projName, title, desc, deadline, pointsStr, typeStr, prioStr, statusStr, assigneeName, gradeStr;
@@ -894,11 +979,12 @@ void System::handleLoad() {
 
                 int points = 0, typeInt = 0, prioInt = 0, statusInt = 0, gradeInt = -1;
 
-                std::stringstream(pointsStr) >> points;
-                std::stringstream(typeStr) >> typeInt;
-                std::stringstream(prioStr) >> prioInt;
-                std::stringstream(statusStr) >> statusInt;
+                std::stringstream(pointsStr) >> points;;
                 std::stringstream(gradeStr) >> gradeInt;
+                TaskType taskType = parseTaskType(typeStr);
+                Priority taskPrio = parsePriority(prioStr);
+                Status taskStatus = parseStatus(statusStr);
+
 
                 std::shared_ptr<Project> targetProj = nullptr;
                 for (const auto& p : projects) {
@@ -909,10 +995,7 @@ void System::handleLoad() {
                 }
 
                 if (targetProj) {
-                    auto newTask = std::make_shared<Task>(title, desc, deadline, points,
-                        static_cast<TaskType>(typeInt),
-                        static_cast<Priority>(prioInt));
-
+                    auto newTask = std::make_shared<Task>(title, desc, deadline, points, taskType, taskPrio);
                     newTask->setId(id);
 
                     newTask->setStatus(static_cast<Status>(statusInt), "SystemLoad");
@@ -936,4 +1019,31 @@ void System::handleLoad() {
             std::println("[System] Task data loaded successfully from tasks.txt.");
         }
     }
+}
+
+std::shared_ptr<Task> System::findTaskById(const std::string& taskId) const {
+    for (const auto& p : projects) {
+        if (auto task = p->getTaskById(taskId)) {
+            return task;
+        }
+    }
+    throw std::invalid_argument("Error: Task not found.");
+}
+
+std::shared_ptr<Project> System::findProjectByName(const std::string& projName) const {
+    for (const auto& p : projects) {
+        if (p->getName() == projName) {
+            return p;
+        }
+    }
+    throw std::invalid_argument("Error: Project not found.");
+}
+
+std::shared_ptr<User> System::findUserByName(const std::string& username) const {
+    for (const auto& u : users) {
+        if (u->getUsername() == username) {
+            return u;
+        }
+    }
+    throw std::invalid_argument("Error: User not found.");
 }

@@ -15,6 +15,9 @@ private:
     bool isRunning;
 
     void initializeAdmin();
+    std::shared_ptr<Task> findTaskById(const std::string& taskId) const;
+    std::shared_ptr<Project> findProjectByName(const std::string& projName) const;
+    std::shared_ptr<User> findUserByName(const std::string& username) const;
 
 public:
     System();
